@@ -13,6 +13,7 @@ import { getReadyOrders, updateOrderStatus } from '../services/orderService';
 import { Order } from '../types/api.types';
 import { useAuth } from '../context/AuthContext';
 import { Alert } from 'react-native';
+import * as Notifications from 'expo-notifications';
 export default function AvailableOrdersScreen() {
   const navigation = useNavigation<any>();
   const { logout } = useAuth();
@@ -23,8 +24,21 @@ export default function AvailableOrdersScreen() {
   const [takingId, setTakingId] = useState<string | null>(null);
 
   useEffect(() => {
+  fetchOrders();
+
+  // Автообновление каждые 30 секунд
+  const interval = setInterval(fetchOrders, 30000);
+
+  // Обновление при получении push-уведомления
+  const subscription = Notifications.addNotificationReceivedListener(() => {
     fetchOrders();
-  }, []);
+  });
+
+  return () => {
+    clearInterval(interval);
+    subscription.remove();
+  };
+}, []);
 
   const fetchOrders = async () => {
     try {

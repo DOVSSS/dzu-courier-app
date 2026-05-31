@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:211795063056:android:193a8dc47880603611f595",
+        "android_client_info": {
+          "package_name": "com.alichan25.courierapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfF3vpVqAEGv6N9Nx6FTpy1NoTRoF6KAI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:211795063056:android:cb279f790b38f34811f595",
         "android_client_info": {
           "package_name": "com.alichan25.restaurantapp"
