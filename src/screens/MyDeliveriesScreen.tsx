@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { getMyDeliveries, updateOrderStatus } from '../services/orderService';
 import { Order } from '../types/api.types';
-import { Alert } from 'react-native'; // ← убедись что импортирован
+
 export default function MyDeliveriesScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,29 +41,29 @@ export default function MyDeliveriesScreen() {
     fetchOrders();
   };
 
- const handleDelivered = async (order: Order) => {
-  Alert.alert(
-    'Подтверждение',
-    `Отметить заказ #${order.reference} как доставленный?`,
-    [
-      { text: 'Отмена', style: 'cancel' },
-      {
-        text: 'Доставлен',
-        onPress: async () => {
-          try {
-            setDeliveringId(order.id);
-            await updateOrderStatus(order.id, 'DELIVERED');
-            setOrders((prev) => prev.filter((o) => o.id !== order.id));
-          } catch (e: any) {
-            Alert.alert('Ошибка', 'Не удалось обновить статус');
-          } finally {
-            setDeliveringId(null);
-          }
+  const handleDelivered = async (order: Order) => {
+    Alert.alert(
+      'Подтверждение',
+      `Отметить заказ #${order.reference} как доставленный?`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Доставлен',
+          onPress: async () => {
+            try {
+              setDeliveringId(order.id);
+              await updateOrderStatus(order.id, 'DELIVERED');
+              setOrders((prev) => prev.filter((o) => o.id !== order.id));
+            } catch (e: any) {
+              Alert.alert('Ошибка', 'Не удалось обновить статус');
+            } finally {
+              setDeliveringId(null);
+            }
+          },
         },
-      },
-    ]
-  );
-};
+      ]
+    );
+  };
 
   if (isLoading) {
     return (
@@ -104,8 +105,8 @@ export default function MyDeliveriesScreen() {
           </View>
 
           <Text style={styles.address}>
-  📍 {item.deliveryAddress || item.user?.address || 'Адрес не указан'}
-</Text>
+            📍 {item.deliveryAddress || item.user?.address || 'Адрес не указан'}
+          </Text>
 
           {item.user && (
             <Text style={styles.customer}>

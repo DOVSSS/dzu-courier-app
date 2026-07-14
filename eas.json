@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 0.60.0"
+    "version": ">= 0.60.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -11,9 +12,17 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      }
     },
-    "production": {}
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      }
+    }
   },
   "submit": {
     "production": {}

@@ -59,7 +59,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         await api.patch(`/users/${data.user.id}`, { pushToken });
       } catch (e) {
-        console.log('Push token save failed:', e);
       }
     }
   };

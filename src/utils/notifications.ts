@@ -14,10 +14,8 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForPushNotifications(): Promise<string | null> {
-  console.log('=== registerForPushNotifications START ===');
 
   if (!Device.isDevice) {
-    console.log('NOT a real device - skipping');
     return null;
   }
 
@@ -30,13 +28,11 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Permission NOT granted');
     return null;
   }
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
   const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-  console.log('Expo Push Token:', token);
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('orders', {
