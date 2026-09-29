@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert,
+  ActivityIndicator, RefreshControl, Alert, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { getAvailableOrders, acceptOrder } from '../services/orderService';
 import { Order } from '../types/api.types';
 import { useAuth } from '../context/AuthContext';
 import * as Notifications from 'expo-notifications';
+import { OrderCardLayout } from '../components/OrderCardLayout';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   PENDING:  { label: '🕐 Ожидает ресторан', color: '#D97706' },
@@ -17,12 +18,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 export default function AvailableOrdersScreen() {
   const navigation = useNavigation<any>();
-  const { logout } = useAuth();
+  const { logout, deleteAccount } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [takingId, setTakingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -47,6 +49,42 @@ export default function AvailableOrdersScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
+  };
+
+  const performDeleteAccount = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteAccount();
+      Alert.alert(
+        'Учётные данные удалены',
+        'Ваш аккаунт был успешно удалён.',
+        [{ text: 'OK' }],
+      );
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось удалить аккаунт');
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    const message =
+      'Это действие необратимо. Все ваши данные курьера и история доставок будут удалены.';
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Удалить аккаунт?\n${message}`)) {
+        performDeleteAccount();
+      }
+      return;
+    }
+
+    Alert.alert('Удалить аккаунт?', message, [
+      { text: 'Отмена', style: 'cancel' },
+      {
+        text: 'Удалить',
+        style: 'destructive',
+        onPress: performDeleteAccount,
+      },
+    ]);
   };
 
   const handleTakeOrder = async (order: Order) => {
@@ -112,38 +150,15 @@ export default function AvailableOrdersScreen() {
           const isReady = item.status === 'READY';
 
           return (
-            <View style={styles.card}>
-              <View style={[styles.cardAccent, { backgroundColor: cfg.color }]} />
-              <View style={styles.cardContent}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.reference}>#{item.reference}</Text>
-                  <View style={[styles.badge, { backgroundColor: cfg.color + '18' }]}>
-                    <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                  </View>
+            <OrderCardLayout
+              order={item}
+              showMap={false}
+              headerRight={
+                <View style={[styles.badge, { backgroundColor: cfg.color + '18' }]}>
+                  <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
                 </View>
-
-                <Text style={styles.address}>
-                  📍 {item.deliveryAddress || item.user?.address || 'Адрес не указан'}
-                </Text>
-
-                {item.user && (
-                  <Text style={styles.customer}>
-                    👤 {item.user.name} · {item.user.phone}
-                  </Text>
-                )}
-
-                <View style={styles.items}>
-                  {item.items.map((orderItem) => (
-                    <Text key={orderItem.id} style={styles.item}>
-                      {orderItem.productName} × {orderItem.quantity}
-                    </Text>
-                  ))}
-                </View>
-
-                {item.comment && (
-                  <Text style={styles.comment}>💬 {item.comment}</Text>
-                )}
-
+              }
+              footer={
                 <View style={styles.cardFooter}>
                   <Text style={styles.total}>{item.total} ₽</Text>
                   {isReady && (
@@ -159,13 +174,23 @@ export default function AvailableOrdersScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
-            </View>
+              }
+            />
           );
         }}
       />
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutText}>Выйти</Text>
+        <Text style={styles.logoutText}>Выйти из аккаунта</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.deleteBtn}
+        onPress={handleDeleteAccount}
+        disabled={isDeleting}
+      >
+        {isDeleting
+          ? <ActivityIndicator color="#EF4444" />
+          : <Text style={styles.deleteBtnText}>Удалить аккаунт</Text>
+        }
       </TouchableOpacity>
     </View>
   );
@@ -183,24 +208,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginBottom: 16,
   },
   myDeliveriesText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  card: {
-    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12,
-    marginBottom: 12, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-  },
-  cardAccent: { width: 4 },
-  cardContent: { flex: 1, padding: 14 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  reference: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeText: { fontSize: 12, fontWeight: '600' },
-  address: { fontSize: 14, color: '#555', marginBottom: 4 },
-  customer: { fontSize: 14, color: '#555', marginBottom: 8 },
-  items: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 8, marginBottom: 8 },
-  item: { fontSize: 13, color: '#666', marginBottom: 2 },
-  comment: { fontSize: 13, color: '#999', fontStyle: 'italic', marginBottom: 8 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
   total: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   takeButton: {
     backgroundColor: '#2ecc71', paddingHorizontal: 16, paddingVertical: 8,
@@ -214,4 +232,15 @@ const styles = StyleSheet.create({
   error: { color: '#e74c3c', marginBottom: 16 },
   logoutButton: { padding: 14, alignItems: 'center', backgroundColor: '#fff' },
   logoutText: { color: '#999', fontSize: 14 },
+  deleteBtn: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    backgroundColor: '#fff',
+  },
+  deleteBtnText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
 });

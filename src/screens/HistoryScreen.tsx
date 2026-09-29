@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { getDeliveredOrders } from '../services/orderService';
-import { Order } from '../types/api.types';
+import { OrderCardLayout } from '../components/OrderCardLayout';
 
 export default function HistoryScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -96,36 +96,21 @@ export default function HistoryScreen() {
         </View>
       }
       renderItem={({ item }) => (
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.reference}>#{item.reference}</Text>
-            <Text style={styles.total}>{item.total} ₽</Text>
-          </View>
-
-          <Text style={styles.date}>🕐 {formatDate(item.createdAt)}</Text>
-
-         <Text style={styles.address}>
-  📍 {item.deliveryAddress || item.user?.address || 'Адрес не указан'}
-</Text>
-
-          {item.user && (
-            <Text style={styles.customer}>
-              👤 {item.user.name}
-            </Text>
-          )}
-
-          <View style={styles.items}>
-            {item.items.map((orderItem) => (
-              <Text key={orderItem.id} style={styles.item}>
-                {orderItem.productName} × {orderItem.quantity}
-              </Text>
-            ))}
-          </View>
-
-          <View style={styles.deliveredBadge}>
-            <Text style={styles.deliveredText}>✔️ Доставлен</Text>
-          </View>
-        </View>
+        <OrderCardLayout
+          order={item}
+          showMap={false}
+          headerRight={
+            <View style={styles.headerRight}>
+              <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
+              <Text style={styles.total}>{item.total} ₽</Text>
+            </View>
+          }
+          footer={
+            <View style={styles.deliveredBadge}>
+              <Text style={styles.deliveredText}>✔️ Доставлен</Text>
+            </View>
+          }
+        />
       )}
     />
   );
@@ -165,59 +150,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  reference: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#333',
+  headerRight: {
+    alignItems: 'flex-end',
   },
   total: {
-    fontSize: 15,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#2ecc71',
+    marginTop: 2,
   },
   date: {
     fontSize: 12,
-    color: '#999',
-    marginBottom: 4,
-  },
-  address: {
-    fontSize: 13,
-    color: '#555',
-    marginBottom: 4,
-  },
-  customer: {
-    fontSize: 13,
-    color: '#555',
-    marginBottom: 8,
-  },
-  items: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 8,
-    marginBottom: 8,
-  },
-  item: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
+    color: '#64748b',
   },
   deliveredBadge: {
     backgroundColor: '#e8f8f0',
-    padding: 6,
-    borderRadius: 6,
+    padding: 10,
+    borderRadius: 8,
     alignItems: 'center',
+    marginTop: 8,
   },
   deliveredText: {
     color: '#2ecc71',

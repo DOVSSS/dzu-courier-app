@@ -41,6 +41,8 @@ export interface Order {
   status: string;
   total: number;
   deliveryAddress: string | null;
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
   comment: string | null;
   createdAt: string;
   user: OrderUser | null;
