@@ -146,7 +146,10 @@ export default function AvailableOrdersScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const cfg = STATUS_CONFIG[item.status] ?? { label: item.status, color: '#999' };
+          const isTaxi = item.type === 'TAXI';
+          const cfg = isTaxi && item.status === 'READY'
+            ? { label: '🚕 Ждёт курьера', color: '#D97706' }
+            : (STATUS_CONFIG[item.status] ?? { label: item.status, color: '#999' });
           const isReady = item.status === 'READY';
 
           return (

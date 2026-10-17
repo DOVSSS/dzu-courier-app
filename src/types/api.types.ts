@@ -35,14 +35,20 @@ export interface OrderUser {
   
 }
 
+export type OrderType = 'FOOD' | 'TAXI';
+
 export interface Order {
   id: string;
   reference: string;
   status: string;
+  type?: OrderType;
   total: number;
   deliveryAddress: string | null;
   deliveryLat?: number | null;
   deliveryLng?: number | null;
+  destinationAddress?: string | null;
+  destinationLat?: number | null;
+  destinationLng?: number | null;
   comment: string | null;
   createdAt: string;
   user: OrderUser | null;

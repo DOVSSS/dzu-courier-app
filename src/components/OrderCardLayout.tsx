@@ -12,17 +12,24 @@ type Props = {
 };
 
 export function OrderCardLayout({ order, showMap = false, footer, headerRight }: Props) {
-  const address = order.deliveryAddress || order.user?.address || 'Адрес не указан';
-  const hasCoords = order.deliveryLat != null && order.deliveryLng != null;
+  const isTaxi = order.type === 'TAXI';
+  const pickupAddress = order.deliveryAddress || order.user?.address || 'Адрес не указан';
+  const destinationAddress = order.destinationAddress?.trim() || null;
+  const hasPickupCoords = order.deliveryLat != null && order.deliveryLng != null;
+  const hasDestCoords = order.destinationLat != null && order.destinationLng != null;
 
   return (
-    <View style={styles.card}>
-      {(headerRight != null) && (
-        <View style={styles.cardTopRow}>
+    <View style={[styles.card, isTaxi && styles.cardTaxi]}>
+      <View style={styles.cardTopRow}>
+        {isTaxi ? (
+          <View style={styles.taxiTypeBadge}>
+            <Text style={styles.taxiTypeBadgeText}>🚕 Такси</Text>
+          </View>
+        ) : (
           <View style={styles.cardTopSpacer} />
-          {headerRight}
-        </View>
-      )}
+        )}
+        {headerRight}
+      </View>
 
       {order.user && (
         <View style={styles.clientBlock}>
@@ -43,31 +50,53 @@ export function OrderCardLayout({ order, showMap = false, footer, headerRight }:
       )}
 
       <View style={styles.addressBlock}>
-        <Text style={styles.addressLabel}>Адрес доставки</Text>
-        <Text style={styles.addressText}>{address}</Text>
+        <Text style={styles.addressLabel}>{isTaxi ? 'Адрес подачи' : 'Адрес доставки'}</Text>
+        <Text style={styles.addressText}>{pickupAddress}</Text>
       </View>
 
-      {showMap && hasCoords && (
+      {isTaxi && destinationAddress ? (
+        <View style={styles.addressBlock}>
+          <Text style={styles.addressLabel}>Адрес назначения</Text>
+          <Text style={styles.addressText}>{destinationAddress}</Text>
+        </View>
+      ) : null}
+
+      {showMap && hasPickupCoords && (
         <TouchableOpacity
           style={styles.mapButton}
           onPress={() =>
-            openInMaps(order.deliveryLat!, order.deliveryLng!, address)
+            openInMaps(order.deliveryLat!, order.deliveryLng!, pickupAddress)
           }
         >
-          <Text style={styles.mapButtonText}>🗺️ Показать на карте</Text>
+          <Text style={styles.mapButtonText}>
+            {isTaxi ? '🗺️ Подача на карте' : '🗺️ Показать на карте'}
+          </Text>
         </TouchableOpacity>
       )}
 
-      <View style={styles.items}>
-        {order.items.map((orderItem) => (
-          <View key={orderItem.id} style={styles.itemRow}>
-            <Text style={styles.itemName} numberOfLines={1}>
-              {orderItem.productName}
-            </Text>
-            <Text style={styles.itemQty}>×{orderItem.quantity}</Text>
-          </View>
-        ))}
-      </View>
+      {showMap && isTaxi && hasDestCoords && destinationAddress && (
+        <TouchableOpacity
+          style={[styles.mapButton, styles.mapButtonSecondary]}
+          onPress={() =>
+            openInMaps(order.destinationLat!, order.destinationLng!, destinationAddress)
+          }
+        >
+          <Text style={styles.mapButtonText}>🗺️ Назначение на карте</Text>
+        </TouchableOpacity>
+      )}
+
+      {!isTaxi && order.items.length > 0 ? (
+        <View style={styles.items}>
+          {order.items.map((orderItem) => (
+            <View key={orderItem.id} style={styles.itemRow}>
+              <Text style={styles.itemName} numberOfLines={1}>
+                {orderItem.productName}
+              </Text>
+              <Text style={styles.itemQty}>×{orderItem.quantity}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {order.comment ? (
         <View style={styles.commentBlock}>
@@ -95,13 +124,24 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  cardTaxi: {
+    borderColor: '#FCD34D',
+    backgroundColor: '#FFFBEB',
+  },
   cardTopRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
   cardTopSpacer: { flex: 1 },
+  taxiTypeBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  taxiTypeBadgeText: { fontSize: 12, fontWeight: '700', color: '#92400E' },
   clientBlock: {
     backgroundColor: '#f0f7ff',
     borderRadius: 12,
@@ -165,6 +205,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
+  },
+  mapButtonSecondary: {
+    backgroundColor: '#059669',
+    marginTop: -4,
   },
   items: {
     borderTopWidth: 1,
