@@ -1,9 +1,19 @@
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
-Notifications.setNotificationHandler({
+type NotificationsModule = typeof import('expo-notifications');
+
+// Expo Go on Android (SDK 53+) crashes as soon as expo-notifications is loaded,
+// so the module is required lazily and skipped there. Push works in EAS / dev builds.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+export const Notifications: NotificationsModule | null = isExpoGo
+  ? null
+  : require('expo-notifications');
+
+// Как показывать уведомления когда приложение открыто
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
@@ -14,9 +24,21 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForPushNotifications(): Promise<string | null> {
+  if (!Notifications) {
+    return null;
+  }
 
   if (!Device.isDevice) {
     return null;
+  }
+
+  // Канал нужно создать до запроса разрешения, иначе Android 13+ не покажет диалог
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('orders', {
+      name: 'Заказы',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: 'default',
+    });
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -32,15 +54,11 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('orders', {
-      name: 'Заказы',
-      importance: Notifications.AndroidImportance.MAX,
-      sound: 'default',
-    });
+  try {
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    return token;
+  } catch (error) {
+    if (__DEV__) console.warn('Failed to get push token:', error);
+    return null;
   }
-
-  return token;
 }

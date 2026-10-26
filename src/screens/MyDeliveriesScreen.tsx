@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getMyDeliveries, updateOrderStatus } from '../services/orderService';
 import { Order } from '../types/api.types';
 import { OrderCardLayout } from '../components/OrderCardLayout';
@@ -19,18 +20,25 @@ export default function MyDeliveriesScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deliveringId, setDeliveringId] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
 
-  useEffect(() => {
+  // Обновляем, пока экран открыт: заказ могут отменить клиент или администратор
+  useFocusEffect(useCallback(() => {
     fetchOrders();
-  }, []);
+    const interval = setInterval(fetchOrders, 15000);
+    return () => clearInterval(interval);
+  }, []));
 
   const fetchOrders = async () => {
     try {
-      setError(null);
       const data = await getMyDeliveries();
       setOrders(data);
-    } catch (e: any) {
-      setError('Не удалось загрузить доставки');
+      hasLoadedOnce.current = true;
+      setError(null);
+    } catch {
+      setError(hasLoadedOnce.current
+        ? 'Нет связи с сервером. Показаны последние загруженные доставки.'
+        : 'Не удалось загрузить доставки');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -56,7 +64,14 @@ export default function MyDeliveriesScreen() {
               await updateOrderStatus(order.id, 'DELIVERED');
               setOrders((prev) => prev.filter((o) => o.id !== order.id));
             } catch (e: any) {
-              Alert.alert('Ошибка', 'Не удалось обновить статус');
+              const message = e?.response?.data?.message;
+              Alert.alert(
+                'Ошибка',
+                typeof message === 'string' && message.includes('CANCELLED')
+                  ? 'Этот заказ был отменён'
+                  : 'Не удалось обновить статус',
+              );
+              fetchOrders();
             } finally {
               setDeliveringId(null);
             }
@@ -74,11 +89,11 @@ export default function MyDeliveriesScreen() {
     );
   }
 
-  if (error) {
+  if (error && !hasLoadedOnce.current) {
     return (
       <View style={styles.centered}>
         <Text style={styles.error}>{error}</Text>
-        <TouchableOpacity style={styles.button} onPress={fetchOrders}>
+        <TouchableOpacity style={styles.button} onPress={() => { setIsLoading(true); fetchOrders(); }}>
           <Text style={styles.buttonText}>Повторить</Text>
         </TouchableOpacity>
       </View>
@@ -92,6 +107,13 @@ export default function MyDeliveriesScreen() {
       contentContainerStyle={styles.list}
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+      }
+      ListHeaderComponent={
+        error ? (
+          <View style={styles.offlineBanner}>
+            <Text style={styles.offlineText}>{error}</Text>
+          </View>
+        ) : null
       }
       ListEmptyComponent={
         <View style={styles.centered}>
@@ -170,5 +192,15 @@ const styles = StyleSheet.create({
   error: {
     color: '#e74c3c',
     marginBottom: 16,
+  },
+  offlineBanner: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  offlineText: {
+    color: '#e74c3c',
+    fontSize: 13,
   },
 });

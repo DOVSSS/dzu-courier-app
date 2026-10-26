@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert, Platform,
+  ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getAvailableOrders, acceptOrder } from '../services/orderService';
 import { Order } from '../types/api.types';
-import { useAuth } from '../context/AuthContext';
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '../utils/notifications';
 import { OrderCardLayout } from '../components/OrderCardLayout';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -18,73 +17,55 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 export default function AvailableOrdersScreen() {
   const navigation = useNavigation<any>();
-  const { logout, deleteAccount } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [takingId, setTakingId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const hasLoadedOnce = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.headerBtnText}>👤 Профиль</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+
+  // Опрашиваем сервер только пока экран открыт
+  useFocusEffect(useCallback(() => {
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
-    const subscription = Notifications.addNotificationReceivedListener(() => {
+    const subscription = Notifications?.addNotificationReceivedListener(() => {
       fetchOrders();
     });
     return () => {
       clearInterval(interval);
-      subscription.remove();
+      subscription?.remove();
     };
-  }, []);
+  }, []));
 
   const fetchOrders = async () => {
     try {
-      setError(null);
       const data = await getAvailableOrders();
       setOrders(data);
-    } catch (e: any) {
-      setError('Не удалось загрузить заказы');
+      hasLoadedOnce.current = true;
+      setError(null);
+    } catch {
+      setError(hasLoadedOnce.current
+        ? 'Нет связи с сервером. Показаны последние загруженные заказы.'
+        : 'Не удалось загрузить заказы');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   };
 
-  const performDeleteAccount = async () => {
-    try {
-      setIsDeleting(true);
-      await deleteAccount();
-      Alert.alert(
-        'Учётные данные удалены',
-        'Ваш аккаунт был успешно удалён.',
-        [{ text: 'OK' }],
-      );
-    } catch {
-      Alert.alert('Ошибка', 'Не удалось удалить аккаунт');
-      setIsDeleting(false);
-    }
-  };
-
-  const handleDeleteAccount = () => {
-    const message =
-      'Это действие необратимо. Все ваши данные курьера и история доставок будут удалены.';
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Удалить аккаунт?\n${message}`)) {
-        performDeleteAccount();
-      }
-      return;
-    }
-
-    Alert.alert('Удалить аккаунт?', message, [
-      { text: 'Отмена', style: 'cancel' },
-      {
-        text: 'Удалить',
-        style: 'destructive',
-        onPress: performDeleteAccount,
-      },
-    ]);
+  const retry = () => {
+    setIsLoading(true);
+    fetchOrders();
   };
 
   const handleTakeOrder = async (order: Order) => {
@@ -93,7 +74,14 @@ export default function AvailableOrdersScreen() {
       await acceptOrder(order.id);
       setOrders((prev) => prev.filter((o) => o.id !== order.id));
     } catch (e: any) {
-      Alert.alert('Ошибка', 'Не удалось взять заказ');
+      const message = e?.response?.data?.message;
+      Alert.alert(
+        'Ошибка',
+        message === 'Order already taken by another courier'
+          ? 'Этот заказ уже взял другой курьер'
+          : 'Не удалось взять заказ',
+      );
+      fetchOrders();
     } finally {
       setTakingId(null);
     }
@@ -105,10 +93,10 @@ export default function AvailableOrdersScreen() {
     </View>
   );
 
-  if (error) return (
+  if (error && !hasLoadedOnce.current) return (
     <View style={styles.centered}>
       <Text style={styles.error}>{error}</Text>
-      <TouchableOpacity style={styles.button} onPress={fetchOrders}>
+      <TouchableOpacity style={styles.button} onPress={retry}>
         <Text style={styles.buttonText}>Повторить</Text>
       </TouchableOpacity>
     </View>
@@ -125,6 +113,11 @@ export default function AvailableOrdersScreen() {
         }
         ListHeaderComponent={
           <View>
+            {error && (
+              <View style={styles.offlineBanner}>
+                <Text style={styles.offlineText}>{error}</Text>
+              </View>
+            )}
             <TouchableOpacity
               style={styles.myDeliveriesButton}
               onPress={() => navigation.navigate('MyDeliveries')}
@@ -182,19 +175,6 @@ export default function AvailableOrdersScreen() {
           );
         }}
       />
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutText}>Выйти из аккаунта</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.deleteBtn}
-        onPress={handleDeleteAccount}
-        disabled={isDeleting}
-      >
-        {isDeleting
-          ? <ActivityIndicator color="#EF4444" />
-          : <Text style={styles.deleteBtnText}>Удалить аккаунт</Text>
-        }
-      </TouchableOpacity>
     </View>
   );
 }
@@ -233,17 +213,11 @@ const styles = StyleSheet.create({
   empty: { fontSize: 16, color: '#999', marginBottom: 8 },
   emptyHint: { fontSize: 13, color: '#bbb' },
   error: { color: '#e74c3c', marginBottom: 16 },
-  logoutButton: { padding: 14, alignItems: 'center', backgroundColor: '#fff' },
-  logoutText: { color: '#999', fontSize: 14 },
-  deleteBtn: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    backgroundColor: '#fff',
+  headerBtn: { paddingHorizontal: 14, paddingVertical: 6 },
+  headerBtnText: { color: '#2c3e50', fontSize: 14, fontWeight: '600' },
+  offlineBanner: {
+    backgroundColor: '#FEF2F2', borderRadius: 8,
+    padding: 10, marginBottom: 12,
   },
-  deleteBtnText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
+  offlineText: { color: '#e74c3c', fontSize: 13 },
 });

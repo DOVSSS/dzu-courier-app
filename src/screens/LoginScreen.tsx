@@ -33,7 +33,7 @@ export default function LoginScreen() {
         e?.response?.data?.message ||
         e?.message ||
         'Ошибка входа';
-      setError(message);
+      setError(Array.isArray(message) ? message[0] : String(message));
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +44,7 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>🚴 Courier App</Text>
+      <Text style={styles.title}>🚴 DZU Курьер</Text>
       <Text style={styles.subtitle}>Вход для курьеров</Text>
 
       {error && <Text style={styles.error}>{error}</Text>}

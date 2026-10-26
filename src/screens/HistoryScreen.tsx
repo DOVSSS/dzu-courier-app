@@ -9,6 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { getDeliveredOrders } from '../services/orderService';
+import type { Order } from '../types/api.types';
 import { OrderCardLayout } from '../components/OrderCardLayout';
 
 export default function HistoryScreen() {

@@ -2,7 +2,8 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import AvailableOrdersScreen from '../screens/AvailableOrdersScreen';
 import MyDeliveriesScreen from '../screens/MyDeliveriesScreen';
-import HistoryScreen from '../screens/HistoryScreen';  // ← добавить
+import HistoryScreen from '../screens/HistoryScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createStackNavigator();
 
@@ -23,6 +24,11 @@ export default function CourierStack() {
         name="History"
         component={HistoryScreen}
         options={{ title: 'История доставок' }}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ title: 'Профиль' }}
       />
     </Stack.Navigator>
   );
