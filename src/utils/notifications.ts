@@ -39,6 +39,14 @@ export async function registerForPushNotifications(): Promise<string | null> {
       importance: Notifications.AndroidImportance.MAX,
       sound: 'default',
     });
+    // Звук канала Android не даёт поменять после создания — для другого звука нужен новый id
+    await Notifications.setNotificationChannelAsync('new-orders', {
+      name: 'Новые заказы',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: 'new_order.wav',
+      vibrationPattern: [0, 500, 250, 500, 250, 500],
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    });
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();

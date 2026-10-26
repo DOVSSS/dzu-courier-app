@@ -38,7 +38,12 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "sounds": ["./assets/sounds/new_order.wav"]
+        }
+      ],
       "expo-secure-store",
       [
         "expo-build-properties",
