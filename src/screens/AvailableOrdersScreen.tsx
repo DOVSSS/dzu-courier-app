@@ -73,6 +73,12 @@ export default function AvailableOrdersScreen() {
       setTakingId(order.id);
       await acceptOrder(order.id);
       setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      if (order.type !== 'TAXI') {
+        Alert.alert(
+          'Заказ ваш',
+          'Он в разделе «Мои активные доставки». Когда заберёте заказ в ресторане, нажмите «Взял заказ».',
+        );
+      }
     } catch (e: any) {
       const message = e?.response?.data?.message;
       Alert.alert(
@@ -143,7 +149,9 @@ export default function AvailableOrdersScreen() {
           const cfg = isTaxi && item.status === 'READY'
             ? { label: '🚕 Ждёт курьера', color: '#D97706' }
             : (STATUS_CONFIG[item.status] ?? { label: item.status, color: '#999' });
-          const isReady = item.status === 'READY';
+          const canTake = isTaxi
+            ? item.status === 'READY'
+            : item.status === 'ACCEPTED' || item.status === 'READY';
 
           return (
             <OrderCardLayout
@@ -157,7 +165,7 @@ export default function AvailableOrdersScreen() {
               footer={
                 <View style={styles.cardFooter}>
                   <Text style={styles.total}>{item.total} ₽</Text>
-                  {isReady && (
+                  {canTake && (
                     <TouchableOpacity
                       style={[styles.takeButton, takingId === item.id && styles.buttonDisabled]}
                       onPress={() => handleTakeOrder(item)}

@@ -10,9 +10,15 @@ import {
   Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getMyDeliveries, updateOrderStatus } from '../services/orderService';
+import { getMyDeliveries, updateOrderStatus, pickupOrder } from '../services/orderService';
 import { Order } from '../types/api.types';
 import { OrderCardLayout } from '../components/OrderCardLayout';
+import { Notifications } from '../utils/notifications';
+
+const AT_RESTAURANT_STATUS: Record<string, { label: string; color: string }> = {
+  ACCEPTED: { label: '👨‍🍳 Ресторан готовит', color: '#2563EB' },
+  READY:    { label: '📦 Готов к выдаче',  color: '#059669' },
+};
 
 export default function MyDeliveriesScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -26,7 +32,13 @@ export default function MyDeliveriesScreen() {
   useFocusEffect(useCallback(() => {
     fetchOrders();
     const interval = setInterval(fetchOrders, 15000);
-    return () => clearInterval(interval);
+    const subscription = Notifications?.addNotificationReceivedListener(() => {
+      fetchOrders();
+    });
+    return () => {
+      clearInterval(interval);
+      subscription?.remove();
+    };
   }, []));
 
   const fetchOrders = async () => {
@@ -48,6 +60,39 @@ export default function MyDeliveriesScreen() {
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchOrders();
+  };
+
+  const handlePickup = (order: Order) => {
+    Alert.alert(
+      'Подтверждение',
+      `Вы забрали заказ #${order.reference} в ресторане?`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Взял заказ',
+          onPress: async () => {
+            try {
+              setDeliveringId(order.id);
+              const updated = await pickupOrder(order.id);
+              setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: updated.status } : o)));
+            } catch (e: any) {
+              const message = e?.response?.data?.message;
+              Alert.alert(
+                'Ошибка',
+                typeof message === 'string' && message.includes('CANCELLED')
+                  ? 'Этот заказ был отменён'
+                  : typeof message === 'string' && message.includes('not marked the order as ready')
+                    ? 'Ресторан ещё не отметил заказ готовым к выдаче'
+                    : 'Не удалось обновить статус',
+              );
+              fetchOrders();
+            } finally {
+              setDeliveringId(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleDelivered = async (order: Order) => {
@@ -120,29 +165,50 @@ export default function MyDeliveriesScreen() {
           <Text style={styles.empty}>Нет активных доставок</Text>
         </View>
       }
-      renderItem={({ item }) => (
-        <OrderCardLayout
-          order={item}
-          showMap
-          headerRight={<Text style={styles.total}>{item.total} ₽</Text>}
-          footer={
-            <TouchableOpacity
-              style={[
-                styles.deliveredButton,
-                deliveringId === item.id && styles.buttonDisabled,
-              ]}
-              onPress={() => handleDelivered(item)}
-              disabled={deliveringId === item.id}
-            >
-              {deliveringId === item.id ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>✔️ Доставлен</Text>
-              )}
-            </TouchableOpacity>
-          }
-        />
-      )}
+      renderItem={({ item }) => {
+        const atRestaurant = AT_RESTAURANT_STATUS[item.status];
+        const waitingForRestaurant = item.status === 'ACCEPTED';
+        const busy = deliveringId === item.id;
+
+        return (
+          <OrderCardLayout
+            order={item}
+            showMap
+            headerRight={<Text style={styles.total}>{item.total} ₽</Text>}
+            footer={
+              <View>
+                {atRestaurant && (
+                  <View style={[styles.statusBadge, { backgroundColor: atRestaurant.color + '18' }]}>
+                    <Text style={[styles.statusBadgeText, { color: atRestaurant.color }]}>
+                      {atRestaurant.label}
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={[
+                    styles.deliveredButton,
+                    atRestaurant && styles.pickupButton,
+                    waitingForRestaurant && styles.waitingButton,
+                    busy && styles.buttonDisabled,
+                  ]}
+                  onPress={() => (atRestaurant ? handlePickup(item) : handleDelivered(item))}
+                  disabled={busy || waitingForRestaurant}
+                >
+                  {busy ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.buttonText}>
+                      {waitingForRestaurant
+                        ? '⏳ Ждём «Готов к выдаче» от ресторана'
+                        : atRestaurant ? '📦 Взял заказ' : '✔️ Доставлен'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            }
+          />
+        );
+      }}
     />
   );
 }
@@ -170,6 +236,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 12,
+  },
+  pickupButton: {
+    backgroundColor: '#2ecc71',
+  },
+  waitingButton: {
+    backgroundColor: '#95a5a6',
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 12,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   button: {
     backgroundColor: '#2c3e50',

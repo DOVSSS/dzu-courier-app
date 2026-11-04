@@ -42,6 +42,7 @@ export interface Order {
   reference: string;
   status: string;
   type?: OrderType;
+  courierId?: string | null;
   total: number;
   deliveryAddress: string | null;
   deliveryLat?: number | null;
