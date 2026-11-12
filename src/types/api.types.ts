@@ -37,6 +37,11 @@ export interface OrderUser {
 
 export type OrderType = 'FOOD' | 'TAXI';
 
+export interface OrderRestaurant {
+  id: string;
+  name: string;
+}
+
 export interface Order {
   id: string;
   reference: string;
@@ -54,6 +59,7 @@ export interface Order {
   createdAt: string;
   user: OrderUser | null;
   items: OrderItem[];
+  restaurants?: OrderRestaurant[];
 }
 
 export type OrderStatus =

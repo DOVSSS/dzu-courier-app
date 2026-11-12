@@ -17,6 +17,7 @@ export function OrderCardLayout({ order, showMap = false, footer, headerRight }:
   const destinationAddress = order.destinationAddress?.trim() || null;
   const hasPickupCoords = order.deliveryLat != null && order.deliveryLng != null;
   const hasDestCoords = order.destinationLat != null && order.destinationLng != null;
+  const restaurantNames = (order.restaurants ?? []).map((r) => r.name).filter(Boolean);
 
   return (
     <View style={[styles.card, isTaxi && styles.cardTaxi]}>
@@ -30,6 +31,13 @@ export function OrderCardLayout({ order, showMap = false, footer, headerRight }:
         )}
         {headerRight}
       </View>
+
+      {!isTaxi && restaurantNames.length > 0 && (
+        <View style={styles.restaurantBlock}>
+          <Text style={styles.restaurantLabel}>Забрать в ресторане</Text>
+          <Text style={styles.restaurantName}>🍽️ {restaurantNames.join(', ')}</Text>
+        </View>
+      )}
 
       {order.user && (
         <View style={styles.clientBlock}>
@@ -142,6 +150,27 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   taxiTypeBadgeText: { fontSize: 12, fontWeight: '700', color: '#92400E' },
+  restaurantBlock: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ea580c',
+  },
+  restaurantLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9a3412',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  restaurantName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
   clientBlock: {
     backgroundColor: '#f0f7ff',
     borderRadius: 12,
