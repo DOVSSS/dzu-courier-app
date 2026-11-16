@@ -49,6 +49,7 @@ export interface Order {
   type?: OrderType;
   courierId?: string | null;
   total: number;
+  deliveryFee?: number;
   deliveryAddress: string | null;
   deliveryLat?: number | null;
   deliveryLng?: number | null;
@@ -57,6 +58,7 @@ export interface Order {
   destinationLng?: number | null;
   comment: string | null;
   createdAt: string;
+  updatedAt?: string;
   user: OrderUser | null;
   items: OrderItem[];
   restaurants?: OrderRestaurant[];

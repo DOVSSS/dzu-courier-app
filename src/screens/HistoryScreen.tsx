@@ -11,6 +11,7 @@ import {
 import { getDeliveredOrders } from '../services/orderService';
 import type { Order } from '../types/api.types';
 import { OrderCardLayout } from '../components/OrderCardLayout';
+import { getOrderAmounts, isSameLocalDay } from '../utils/orderAmounts';
 
 export default function HistoryScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -72,6 +73,17 @@ export default function HistoryScreen() {
 
   const totalEarnings = orders.reduce((sum, o) => sum + o.total, 0);
 
+  const todayOrders = orders.filter((o) => isSameLocalDay(o.updatedAt ?? o.createdAt));
+  const today = todayOrders.reduce(
+    (acc, o) => {
+      const amounts = getOrderAmounts(o);
+      acc.serviceFee += amounts.serviceFee;
+      acc.deliveryFee += amounts.deliveryFee;
+      return acc;
+    },
+    { serviceFee: 0, deliveryFee: 0 },
+  );
+
   return (
     <FlatList
       data={orders}
@@ -82,12 +94,22 @@ export default function HistoryScreen() {
       }
       ListHeaderComponent={
         orders.length > 0 ? (
-          <View style={styles.statsCard}>
-            <Text style={styles.statsTitle}>Всего доставок</Text>
-            <Text style={styles.statsCount}>{orders.length}</Text>
-            <Text style={styles.statsEarnings}>
-              Сумма заказов: {totalEarnings} ₽
-            </Text>
+          <View>
+            <View style={styles.todayCard}>
+              <Text style={styles.todayTitle}>Сегодня доставлено: {todayOrders.length}</Text>
+              <Text style={styles.todayServiceLabel}>Сервисный сбор — сдать нам</Text>
+              <Text style={styles.todayServiceValue}>{today.serviceFee} ₽</Text>
+              <Text style={styles.todayCourier}>
+                Ваш заработок за доставку: {today.deliveryFee} ₽
+              </Text>
+            </View>
+            <View style={styles.statsCard}>
+              <Text style={styles.statsTitle}>Всего доставок</Text>
+              <Text style={styles.statsCount}>{orders.length}</Text>
+              <Text style={styles.statsEarnings}>
+                Сумма заказов: {totalEarnings} ₽
+              </Text>
+            </View>
           </View>
         ) : null
       }
@@ -128,6 +150,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+  },
+  todayCard: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fdba74',
+  },
+  todayTitle: {
+    color: '#9a3412',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  todayServiceLabel: {
+    color: '#7c2d12',
+    fontSize: 13,
+  },
+  todayServiceValue: {
+    color: '#ea580c',
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginVertical: 2,
+  },
+  todayCourier: {
+    color: '#16a34a',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
   },
   statsCard: {
     backgroundColor: '#2c3e50',

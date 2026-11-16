@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Order } from '../types/api.types';
 import { openInMaps } from '../utils/openInMaps';
 import { showPhoneActions } from '../utils/phoneActions';
+import { getOrderAmounts } from '../utils/orderAmounts';
 
 type Props = {
   order: Order;
@@ -18,6 +19,7 @@ export function OrderCardLayout({ order, showMap = false, footer, headerRight }:
   const hasPickupCoords = order.deliveryLat != null && order.deliveryLng != null;
   const hasDestCoords = order.destinationLat != null && order.destinationLng != null;
   const restaurantNames = (order.restaurants ?? []).map((r) => r.name).filter(Boolean);
+  const amounts = getOrderAmounts(order);
 
   return (
     <View style={[styles.card, isTaxi && styles.cardTaxi]}>
@@ -105,6 +107,32 @@ export function OrderCardLayout({ order, showMap = false, footer, headerRight }:
           ))}
         </View>
       ) : null}
+
+      <View style={styles.paymentBlock}>
+        <Text style={styles.paymentLabel}>Оплата</Text>
+        <View style={styles.paymentRow}>
+          <Text style={styles.paymentTotalTitle}>Взять с клиента</Text>
+          <Text style={styles.paymentTotalValue}>{amounts.total} ₽</Text>
+        </View>
+        {!isTaxi && (
+          <View style={styles.paymentRow}>
+            <Text style={styles.paymentTitle}>🍽️ Ресторану за еду</Text>
+            <Text style={styles.paymentValue}>{amounts.foodTotal} ₽</Text>
+          </View>
+        )}
+        <View style={styles.paymentRow}>
+          <Text style={styles.paymentTitle}>
+            🚴 {isTaxi ? 'Ваша сумма за поездку' : 'Ваша сумма за доставку'}
+          </Text>
+          <Text style={[styles.paymentValue, styles.paymentCourier]}>{amounts.deliveryFee} ₽</Text>
+        </View>
+        {!isTaxi && (
+          <View style={styles.paymentRow}>
+            <Text style={styles.paymentTitle}>🏢 Сервисный сбор (сдать нам)</Text>
+            <Text style={[styles.paymentValue, styles.paymentService]}>{amounts.serviceFee} ₽</Text>
+          </View>
+        )}
+      </View>
 
       {order.comment ? (
         <View style={styles.commentBlock}>
@@ -260,6 +288,55 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#64748b',
     marginLeft: 8,
+  },
+  paymentBlock: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#16a34a',
+  },
+  paymentLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  paymentTotalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  paymentTotalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  paymentTitle: {
+    flex: 1,
+    fontSize: 14,
+    color: '#475569',
+  },
+  paymentValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#334155',
+    marginLeft: 8,
+  },
+  paymentCourier: {
+    color: '#16a34a',
+  },
+  paymentService: {
+    color: '#ea580c',
   },
   commentBlock: {
     backgroundColor: '#fffbeb',
