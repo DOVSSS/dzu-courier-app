@@ -8,8 +8,8 @@ export type OrderAmounts = {
 };
 
 /**
- * Сервисный сбор в заказе отдельно не хранится: бэкенд считает
- * total = сумма блюд + доставка + сервисный сбор, поэтому сбор — это остаток.
+ * Сервисный сбор берём из Order.serviceFee, если бэкенд его отдал.
+ * Для старых заказов без поля — остаток total − еда − доставка.
  */
 export function getOrderAmounts(order: Order): OrderAmounts {
   const total = order.total ?? 0;
@@ -23,7 +23,10 @@ export function getOrderAmounts(order: Order): OrderAmounts {
     0,
   );
   const deliveryFee = order.deliveryFee ?? 0;
-  const serviceFee = Math.max(0, total - foodTotal - deliveryFee);
+  const serviceFee =
+    typeof order.serviceFee === 'number'
+      ? Math.max(0, order.serviceFee)
+      : Math.max(0, total - foodTotal - deliveryFee);
 
   return { total, foodTotal, deliveryFee, serviceFee };
 }

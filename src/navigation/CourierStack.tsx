@@ -1,7 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import AvailableOrdersScreen from '../screens/AvailableOrdersScreen';
-import MyDeliveriesScreen from '../screens/MyDeliveriesScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -13,12 +12,7 @@ export default function CourierStack() {
       <Stack.Screen
         name="AvailableOrders"
         component={AvailableOrdersScreen}
-        options={{ title: 'Доступные заказы' }}
-      />
-      <Stack.Screen
-        name="MyDeliveries"
-        component={MyDeliveriesScreen}
-        options={{ title: 'Мои доставки' }}
+        options={{ title: 'Заказы' }}
       />
       <Stack.Screen
         name="History"

@@ -9,12 +9,14 @@ import {
   RefreshControl,
 } from 'react-native';
 import { getDeliveredOrders } from '../services/orderService';
+import { getMyOwed } from '../services/revenueService';
 import type { Order } from '../types/api.types';
 import { OrderCardLayout } from '../components/OrderCardLayout';
 import { getOrderAmounts, isSameLocalDay } from '../utils/orderAmounts';
 
 export default function HistoryScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [owedServiceFee, setOwedServiceFee] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +28,12 @@ export default function HistoryScreen() {
   const fetchOrders = async () => {
     try {
       setError(null);
-      const data = await getDeliveredOrders();
+      const [data, owed] = await Promise.all([
+        getDeliveredOrders(),
+        getMyOwed().catch(() => null),
+      ]);
       setOrders(data);
+      if (owed) setOwedServiceFee(owed.owed);
     } catch (e: any) {
       setError('Не удалось загрузить историю');
     } finally {
@@ -74,14 +80,9 @@ export default function HistoryScreen() {
   const totalEarnings = orders.reduce((sum, o) => sum + o.total, 0);
 
   const todayOrders = orders.filter((o) => isSameLocalDay(o.updatedAt ?? o.createdAt));
-  const today = todayOrders.reduce(
-    (acc, o) => {
-      const amounts = getOrderAmounts(o);
-      acc.serviceFee += amounts.serviceFee;
-      acc.deliveryFee += amounts.deliveryFee;
-      return acc;
-    },
-    { serviceFee: 0, deliveryFee: 0 },
+  const todayDeliveryFee = todayOrders.reduce(
+    (sum, o) => sum + getOrderAmounts(o).deliveryFee,
+    0,
   );
 
   return (
@@ -93,16 +94,16 @@ export default function HistoryScreen() {
         <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
       ListHeaderComponent={
-        orders.length > 0 ? (
-          <View>
-            <View style={styles.todayCard}>
-              <Text style={styles.todayTitle}>Сегодня доставлено: {todayOrders.length}</Text>
-              <Text style={styles.todayServiceLabel}>Сервисный сбор — сдать нам</Text>
-              <Text style={styles.todayServiceValue}>{today.serviceFee} ₽</Text>
-              <Text style={styles.todayCourier}>
-                Ваш заработок за доставку: {today.deliveryFee} ₽
-              </Text>
-            </View>
+        <View>
+          <View style={styles.todayCard}>
+            <Text style={styles.todayTitle}>Сегодня доставлено: {todayOrders.length}</Text>
+            <Text style={styles.todayServiceLabel}>Сервисный сбор — сдать нам</Text>
+            <Text style={styles.todayServiceValue}>{owedServiceFee} ₽</Text>
+            <Text style={styles.todayCourier}>
+              Ваш заработок за доставку: {todayDeliveryFee} ₽
+            </Text>
+          </View>
+          {orders.length > 0 ? (
             <View style={styles.statsCard}>
               <Text style={styles.statsTitle}>Всего доставок</Text>
               <Text style={styles.statsCount}>{orders.length}</Text>
@@ -110,8 +111,8 @@ export default function HistoryScreen() {
                 Сумма заказов: {totalEarnings} ₽
               </Text>
             </View>
-          </View>
-        ) : null
+          ) : null}
+        </View>
       }
       ListEmptyComponent={
         <View style={styles.centered}>

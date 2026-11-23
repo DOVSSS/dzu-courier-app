@@ -50,6 +50,7 @@ export interface Order {
   courierId?: string | null;
   total: number;
   deliveryFee?: number;
+  serviceFee?: number;
   deliveryAddress: string | null;
   deliveryLat?: number | null;
   deliveryLng?: number | null;
